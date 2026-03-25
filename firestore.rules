@@ -1,0 +1,217 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional, URL format)
+    //   - organizationId: string (optional)
+    //   - position: string (optional)
+    //   - department: string (optional)
+    //   - role: string (optional, enum: ['user', 'admin', 'super-admin'])
+    //   - createdAt: timestamp (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: organizations
+    // Document ID: {orgId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - address: string (optional)
+    //   - phone: string (optional)
+    //   - email: string (optional, email format)
+    //   - website: string (optional, URL format)
+    //   - logoUrl: string (optional, URL format)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: documents
+    // Document ID: {docId}
+    // Fields:
+    //   - id: string (required)
+    //   - authorUid: string (required)
+    //   - organizationId: string (optional)
+    //   - title: string (required)
+    //   - type: string (required, enum: ['thong-bao', 'quyet-dinh', 'cong-van', 'bao-cao', 'to-trinh'])
+    //   - status: string (required, enum: ['draft', 'final'])
+    //   - content: string (required)
+    //   - aiGeneratedContent: string (optional)
+    //   - editedContent: string (optional)
+    //   - metadata: map (required)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: templates
+    // Document ID: {templateId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - type: string (required, enum: ['thong-bao', 'quyet-dinh', 'cong-van', 'bao-cao', 'to-trinh'])
+    //   - structure: string (required)
+    //   - sampleContent: string (optional)
+    //   - isActive: bool (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: ai_logs
+    // Document ID: {logId}
+    // Fields:
+    //   - id: string (required)
+    //   - userUid: string (required)
+    //   - documentId: string (optional)
+    //   - prompt: string (required)
+    //   - response: string (optional)
+    //   - tokensUsed: number (optional)
+    //   - model: string (optional)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') in ['admin', 'super-admin']) ||
+        (request.auth.token.email == "nguyenlynktq@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url == "" || url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function hasOnlyAllowedFields(data, allowedFields) {
+      return data.keys().hasOnly(allowedFields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      let allowed = ['uid', 'email', 'displayName', 'photoURL', 'organizationId', 'position', 'department', 'role', 'createdAt', 'updatedAt'];
+      return hasOnlyAllowedFields(data, allowed) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.email is string && isValidEmail(data.email) &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('photoURL' in data) || isValidUrl(data.photoURL)) &&
+             (!('role' in data) || data.role in ['user', 'admin', 'super-admin']);
+    }
+
+    function isValidDocument(data) {
+      let allowed = ['id', 'authorUid', 'organizationId', 'title', 'type', 'status', 'content', 'aiGeneratedContent', 'editedContent', 'metadata', 'createdAt', 'updatedAt'];
+      let docTypes = ['thong-bao', 'quyet-dinh', 'cong-van', 'bao-cao', 'to-trinh'];
+      return hasOnlyAllowedFields(data, allowed) &&
+             data.id is string &&
+             data.authorUid is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.type in docTypes &&
+             data.status in ['draft', 'final'] &&
+             data.content is string &&
+             data.metadata is map &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidOrganization(data) {
+      let allowed = ['id', 'name', 'address', 'phone', 'email', 'website', 'logoUrl', 'createdAt'];
+      return hasOnlyAllowedFields(data, allowed) &&
+             data.name is string && data.name.size() > 0 &&
+             (!('email' in data) || isValidEmail(data.email)) &&
+             (!('website' in data) || isValidUrl(data.website)) &&
+             (!('logoUrl' in data) || isValidUrl(data.logoUrl)) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidTemplate(data) {
+      let allowed = ['id', 'name', 'type', 'structure', 'sampleContent', 'isActive', 'createdAt'];
+      let docTypes = ['thong-bao', 'quyet-dinh', 'cong-van', 'bao-cao', 'to-trinh'];
+      return hasOnlyAllowedFields(data, allowed) &&
+             data.name is string && data.name.size() > 0 &&
+             data.type in docTypes &&
+             data.structure is string &&
+             data.isActive is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidAILog(data) {
+      let allowed = ['id', 'userUid', 'documentId', 'prompt', 'response', 'tokensUsed', 'model', 'timestamp'];
+      return hasOnlyAllowedFields(data, allowed) &&
+             data.userUid is string &&
+             data.prompt is string &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && isValidUser(request.resource.data) && 
+                      (request.resource.data.get('role', 'user') == 'user' || isAdmin());
+      allow update: if isOwner(uid) && isValidUser(request.resource.data) && 
+                      (request.resource.data.get('role', resource.data.role) == resource.data.role || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /organizations/{orgId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() && isValidOrganization(request.resource.data);
+      allow update: if isAdmin() && isValidOrganization(request.resource.data);
+    }
+
+    match /documents/{docId} {
+      allow read: if isAuthenticated() && (resource.data.authorUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+                      request.resource.data.authorUid == request.auth.uid && 
+                      isValidDocument(request.resource.data);
+      allow update: if isAuthenticated() && 
+                      (resource.data.authorUid == request.auth.uid || isAdmin()) && 
+                      isValidDocument(request.resource.data) &&
+                      request.resource.data.authorUid == resource.data.authorUid;
+      allow delete: if isAuthenticated() && (resource.data.authorUid == request.auth.uid || isAdmin());
+    }
+
+    match /templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() && isValidTemplate(request.resource.data);
+      allow update: if isAdmin() && isValidTemplate(request.resource.data);
+    }
+
+    match /ai_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userUid == request.auth.uid && 
+                      isValidAILog(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

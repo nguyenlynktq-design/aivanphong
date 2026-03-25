@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Thông tin người dùng và cơ quan công tác.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "organizationId": { "type": "string", "description": "ID cơ quan, đơn vị" },
+        "position": { "type": "string", "description": "Chức vụ" },
+        "department": { "type": "string", "description": "Phòng ban" },
+        "role": { "type": "string", "enum": ["user", "admin", "super-admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Organization": {
+      "title": "Organization",
+      "description": "Thông tin cơ quan, đơn vị hành chính.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "website": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "Document": {
+      "title": "Administrative Document",
+      "description": "Văn bản hành chính được soạn thảo.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["thong-bao", "quyet-dinh", "cong-van", "bao-cao", "to-trinh"] },
+        "status": { "type": "string", "enum": ["draft", "final"] },
+        "content": { "type": "string", "description": "Nội dung chính của văn bản" },
+        "aiGeneratedContent": { "type": "string", "description": "Nội dung ban đầu do AI sinh" },
+        "editedContent": { "type": "string", "description": "Nội dung sau khi người dùng chỉnh sửa" },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "number": { "type": "string", "description": "Số hiệu văn bản" },
+            "date": { "type": "string", "format": "date-time" },
+            "location": { "type": "string", "description": "Địa danh" },
+            "recipient": { "type": "string", "description": "Nơi nhận" },
+            "signer": { "type": "string", "description": "Người ký" },
+            "signerPosition": { "type": "string", "description": "Chức vụ người ký" },
+            "department": { "type": "string", "description": "Đơn vị soạn thảo" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorUid", "title", "type", "content"]
+    },
+    "Template": {
+      "title": "Document Template",
+      "description": "Mẫu văn bản hành chính chuẩn.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["thong-bao", "quyet-dinh", "cong-van", "bao-cao", "to-trinh"] },
+        "structure": { "type": "string", "description": "Cấu trúc gợi ý cho AI" },
+        "sampleContent": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "structure"]
+    },
+    "AILog": {
+      "title": "AI Usage Log",
+      "description": "Nhật ký sử dụng AI để kiểm soát và tối ưu.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userUid": { "type": "string" },
+        "documentId": { "type": "string" },
+        "prompt": { "type": "string" },
+        "response": { "type": "string" },
+        "tokensUsed": { "type": "number" },
+        "model": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userUid", "prompt", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "Thông tin cá nhân người dùng."
+    },
+    "/organizations/{orgId}": {
+      "schema": "Organization",
+      "description": "Thông tin các cơ quan."
+    },
+    "/documents/{docId}": {
+      "schema": "Document",
+      "description": "Danh sách văn bản hành chính."
+    },
+    "/templates/{templateId}": {
+      "schema": "Template",
+      "description": "Mẫu văn bản chuẩn."
+    },
+    "/ai_logs/{logId}": {
+      "schema": "AILog",
+      "description": "Nhật ký AI."
+    }
+  }
+}
