@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
 import { motion } from 'motion/react';
@@ -18,7 +18,7 @@ export default function Profile({ user, profile, setProfile }: { user: any, prof
     setSuccess(false);
     try {
       const docRef = doc(db, 'users', user.uid);
-      await updateDoc(docRef, formData);
+      await setDoc(docRef, formData, { merge: true });
       setProfile({ ...profile, ...formData } as UserProfile);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);

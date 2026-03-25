@@ -17,6 +17,7 @@ import mammoth from "mammoth";
 import nodemailer from "nodemailer";
 import * as xlsx from "xlsx";
 
+import dotenv from "dotenv";
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);

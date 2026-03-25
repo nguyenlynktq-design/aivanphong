@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Document, DocType, DocCategory, DocGroup, UserProfile } from '../types';
-import { generateDocContent, optimizeContent, exportDocument, getSigningOptions } from '../services/gemini';
+import { generateDocContent, optimizeContent, exportDocument, getSigningOptions, suggestCanCu } from '../services/gemini';
 import { getGroupedDocTypes, findDocType, suggestSoKyHieu, getDocLabel, DOC_GROUPS } from '../config/docTypes';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -169,6 +169,19 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
       updateDoc({ noi_dung: optimized });
     } catch (error) {
       console.error('AI Optimization failed', error);
+    }
+    setAiLoading(false);
+  };
+
+  const handleSuggestCanCu = async (cat: 'government' | 'party') => {
+    if (!docData.trich_yeu) return;
+    setAiLoading(true);
+    try {
+      const suggestStr = await suggestCanCu(docData.type || 'thong_bao', docData.trich_yeu, cat);
+      const newCanCu = suggestStr.split('\n').map((x: string) => x.trim()).filter((x: string) => x.startsWith('Căn cứ') || x.length > 10);
+      updateDoc({ can_cu: [...(docData.can_cu || []), ...newCanCu] });
+    } catch (error) {
+      console.error('Suggest căn cứ failed', error);
     }
     setAiLoading(false);
   };
@@ -531,7 +544,27 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
 
                     {/* Căn cứ pháp lý */}
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-text-main">Căn cứ pháp lý</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-bold text-text-main">Căn cứ pháp lý</label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleSuggestCanCu('government')}
+                            disabled={aiLoading || !docData.trich_yeu}
+                            className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-1 rounded hover:bg-sky-600 hover:text-white transition-colors disabled:opacity-50"
+                          >
+                            <Sparkles className="w-3 h-3 inline mr-1" />
+                            Gợi ý (CQ - NĐ30)
+                          </button>
+                          <button
+                            onClick={() => handleSuggestCanCu('party')}
+                            disabled={aiLoading || !docData.trich_yeu}
+                            className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded hover:bg-amber-600 hover:text-white transition-colors disabled:opacity-50"
+                          >
+                            <Star className="w-3 h-3 inline mr-1" />
+                            Gợi ý (Đảng - HD36)
+                          </button>
+                        </div>
+                      </div>
                       <TextArea
                         value={(docData.can_cu || []).join('\n')}
                         onChange={e => updateDoc({ can_cu: e.target.value.split('\n').filter(Boolean) })}

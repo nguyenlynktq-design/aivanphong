@@ -123,38 +123,38 @@ function AppLayout({ profile }: { profile: UserProfile | null }) {
     <div className="flex h-screen bg-neutral-50 text-neutral-900 font-sans">
       {/* Sidebar */}
       <aside className={cn(
-        "bg-neutral-900 text-amber-400 bg-trong-dong transition-all duration-300 flex flex-col z-50 shadow-2xl shadow-black",
+        "bg-white border-r border-neutral-200 transition-all duration-300 flex flex-col z-50",
         isSidebarOpen ? "w-64" : "w-20"
       )}>
-        <div className="p-6 flex items-center gap-3 border-b border-red-900/50 shrink-0 bg-neutral-900/80 backdrop-blur-sm">
-          <div className="w-8 h-8 bg-red-700 rounded flex items-center justify-center shrink-0 shadow-lg shadow-red-900/20">
-            <Sparkles className="w-5 h-5 text-amber-300" />
+        <div className="p-6 flex items-center gap-3 border-b border-neutral-100 shrink-0">
+          <div className="w-8 h-8 bg-gradient-to-br from-brand-red to-brand-orange rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
-          {isSidebarOpen && <span className="font-bold text-lg tracking-tight truncate text-amber-400">AI Soạn thảo</span>}
+          {isSidebarOpen && <span className="font-bold text-lg tracking-tight truncate text-brand-dark">AI Soạn thảo</span>}
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg transition-all duration-200 font-semibold",
+                "flex items-center gap-3 p-3 rounded-xl transition-all duration-200 font-semibold text-sm",
                 location.pathname.startsWith(item.path) 
-                  ? "bg-red-800 text-amber-300 shadow-md shadow-red-900/40 border-l-4 border-amber-400" 
-                  : "text-amber-400/70 hover:bg-red-900/40 hover:text-amber-300"
+                  ? "bg-red-50 text-brand-red shadow-sm border border-red-100/50" 
+                  : "text-text-muted hover:bg-neutral-50 hover:text-text-main"
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
-              {isSidebarOpen && <span className="truncate font-medium">{item.name}</span>}
+              {isSidebarOpen && <span className="truncate">{item.name}</span>}
             </Link>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-red-900/50 shrink-0 bg-neutral-900/80 backdrop-blur-sm">
+        <div className="p-4 border-t border-neutral-100 shrink-0">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-red-900/40 text-amber-400/70 hover:text-amber-300 transition-all duration-200 font-semibold"
+            className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-red-50 text-text-muted hover:text-brand-red transition-all duration-200 font-semibold text-sm"
           >
             <LogOut className="w-5 h-5 shrink-0" />
             {isSidebarOpen && <span>Đăng xuất</span>}
