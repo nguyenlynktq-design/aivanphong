@@ -132,6 +132,43 @@ export default function Dashboard({ user, profile }: { user: any; profile: UserP
         />
       </div>
 
+      {/* Main AI Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-gradient-to-br from-brand-dark to-slate-800 text-white border-none shadow-xl shadow-slate-200 hover:scale-[1.01] transition-transform">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div>
+              <div className="w-12 h-12 bg-brand-orange text-white rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-orange-900/20">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">AI Soạn thảo</h3>
+              <p className="text-slate-300 text-sm mb-0 leading-relaxed max-w-sm">
+                Tự động soạn nội dung, tối ưu văn phong, gợi ý căn cứ pháp lý theo tiêu chuẩn NĐ30 và HD36.
+              </p>
+            </div>
+            <Link to="/editor" className="btn-primary bg-brand-orange hover:bg-orange-600 shadow-orange-900/20 whitespace-nowrap">
+              Bắt đầu soạn <ArrowUpRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white border-none shadow-xl shadow-emerald-200 hover:scale-[1.01] transition-transform">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div>
+              <div className="w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center mb-4">
+                <FileUp className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Triển khai VB cấp trên</h3>
+              <p className="text-emerald-100 text-sm mb-0 leading-relaxed max-w-sm">
+                Paste VB từ cấp trên, AI sẽ trích xuất nhiệm vụ và tự động soạn Kế hoạch, Công văn triển khai tương ứng.
+              </p>
+            </div>
+            <Link to="/trien-khai" className="btn-primary bg-white/20 hover:bg-white/30 border-0 whitespace-nowrap">
+              Bắt đầu <ArrowUpRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </Card>
+      </div>
+
       {/* Quick Create — Grid cards */}
       <div>
         <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
@@ -235,22 +272,8 @@ export default function Dashboard({ user, profile }: { user: any; profile: UserP
           </Table>
         </div>
 
-        {/* Sidebar — AI + Stats */}
+        {/* Sidebar — Stats */}
         <div className="space-y-6">
-          {/* AI Card */}
-          <Card className="bg-gradient-to-br from-brand-dark to-slate-800 text-white border-none shadow-xl shadow-slate-200">
-            <div className="w-12 h-12 bg-brand-orange text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-orange-900/20">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">AI Soạn thảo</h3>
-            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-              Tự động soạn nội dung, tối ưu văn phong, gợi ý căn cứ pháp lý — chuẩn NĐ30 và HD36.
-            </p>
-            <Link to="/editor" className="w-full btn-primary bg-brand-orange hover:bg-orange-600 shadow-orange-900/20">
-              Bắt đầu soạn <ArrowUpRight className="w-4 h-4" />
-            </Link>
-          </Card>
-
           {/* Top VB types */}
           {stats.topTypes.length > 0 && (
             <Card title="Loại VB phổ biến" icon={<BarChart3 className="w-5 h-5" />}>
@@ -276,20 +299,6 @@ export default function Dashboard({ user, profile }: { user: any; profile: UserP
               </div>
             </Card>
           )}
-          {/* Triển khai VB cấp trên */}
-          <Card className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white border-none shadow-xl shadow-emerald-200">
-            <div className="w-12 h-12 bg-white/20 text-white rounded-2xl flex items-center justify-center mb-4">
-              <FileUp className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold mb-2">Triển khai VB cấp trên</h3>
-            <p className="text-emerald-200 text-sm mb-5 leading-relaxed">
-              Paste VB cấp trên → AI trích xuất nhiệm vụ → Tự động soạn KH, CV, BC triển khai.
-            </p>
-            <Link to="/trien-khai" className="w-full btn-primary bg-white/20 hover:bg-white/30 border-0">
-              Bắt đầu <ArrowUpRight className="w-4 h-4" />
-            </Link>
-          </Card>
-
           {/* Cấu hình cơ quan */}
           <Card title="Cấu hình cơ quan" icon={<Users className="w-5 h-5" />}>
             <p className="text-sm text-text-muted mb-4">Cập nhật thông tin cơ quan để tự động điền vào VB mới.</p>

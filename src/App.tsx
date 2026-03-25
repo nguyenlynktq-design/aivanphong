@@ -123,14 +123,14 @@ function AppLayout({ profile }: { profile: UserProfile | null }) {
     <div className="flex h-screen bg-neutral-50 text-neutral-900 font-sans">
       {/* Sidebar */}
       <aside className={cn(
-        "bg-neutral-900 text-white transition-all duration-300 flex flex-col z-50",
+        "bg-neutral-900 text-amber-400 bg-trong-dong transition-all duration-300 flex flex-col z-50 shadow-2xl shadow-black",
         isSidebarOpen ? "w-64" : "w-20"
       )}>
-        <div className="p-6 flex items-center gap-3 border-b border-neutral-800 shrink-0">
-          <div className="w-8 h-8 bg-primary-600 rounded flex items-center justify-center shrink-0 shadow-lg shadow-primary-900/20">
-            <Sparkles className="w-5 h-5 text-white" />
+        <div className="p-6 flex items-center gap-3 border-b border-red-900/50 shrink-0 bg-neutral-900/80 backdrop-blur-sm">
+          <div className="w-8 h-8 bg-red-700 rounded flex items-center justify-center shrink-0 shadow-lg shadow-red-900/20">
+            <Sparkles className="w-5 h-5 text-amber-300" />
           </div>
-          {isSidebarOpen && <span className="font-bold text-lg tracking-tight truncate">AI Soạn thảo</span>}
+          {isSidebarOpen && <span className="font-bold text-lg tracking-tight truncate text-amber-400">AI Soạn thảo</span>}
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -139,10 +139,10 @@ function AppLayout({ profile }: { profile: UserProfile | null }) {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg transition-all duration-200",
+                "flex items-center gap-3 p-3 rounded-lg transition-all duration-200 font-semibold",
                 location.pathname.startsWith(item.path) 
-                  ? "bg-primary-600 text-white shadow-md shadow-primary-900/20" 
-                  : "hover:bg-neutral-800 text-neutral-400 hover:text-white"
+                  ? "bg-red-800 text-amber-300 shadow-md shadow-red-900/40 border-l-4 border-amber-400" 
+                  : "text-amber-400/70 hover:bg-red-900/40 hover:text-amber-300"
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
@@ -151,13 +151,13 @@ function AppLayout({ profile }: { profile: UserProfile | null }) {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-neutral-800 shrink-0">
+        <div className="p-4 border-t border-red-900/50 shrink-0 bg-neutral-900/80 backdrop-blur-sm">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all duration-200"
+            className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-red-900/40 text-amber-400/70 hover:text-amber-300 transition-all duration-200 font-semibold"
           >
             <LogOut className="w-5 h-5 shrink-0" />
-            {isSidebarOpen && <span className="font-medium">Đăng xuất</span>}
+            {isSidebarOpen && <span>Đăng xuất</span>}
           </button>
         </div>
       </aside>

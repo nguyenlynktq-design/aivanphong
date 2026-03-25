@@ -46,7 +46,7 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
     co_quan_chu_quan: profile?.organization || '',
     co_quan_ban_hanh: profile?.department || '',
     so_ky_hieu: '',
-    dia_danh: '',
+    dia_danh: profile?.location || '',
     ngay: new Date().getDate().toString().padStart(2, '0'),
     thang: (new Date().getMonth() + 1).toString().padStart(2, '0'),
     nam: new Date().getFullYear().toString(),
@@ -408,32 +408,14 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
                 </Card>
 
                 {/* --- Thông tin cơ quan --- */}
-                <Card title="Thông tin cơ quan" subtitle="Cơ quan ban hành và số ký hiệu.">
-                  <div className="space-y-3">
-                    <Input
-                      label="Cơ quan chủ quản"
-                      value={docData.co_quan_chu_quan || ''}
-                      onChange={e => updateDoc({ co_quan_chu_quan: e.target.value })}
-                      placeholder="VD: BỘ TÀI CHÍNH, TỈNH ỦY HÀ GIANG"
-                    />
-                    <Input
-                      label="Cơ quan ban hành"
-                      value={docData.co_quan_ban_hanh || ''}
-                      onChange={e => updateDoc({ co_quan_ban_hanh: e.target.value })}
-                      placeholder="VD: VỤ TỔ CHỨC CÁN BỘ, HUYỆN ỦY ĐỒNG VĂN"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
+                <Card title="Phát hành văn bản" subtitle="Số ký hiệu và chi tiết ngày tháng.">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
                       <Input
                         label="Số ký hiệu"
                         value={docData.so_ky_hieu || ''}
                         onChange={e => updateDoc({ so_ky_hieu: e.target.value })}
                         placeholder={category === 'party' ? 'Số ..-NQ/TU' : 'Số .../TB-UBND'}
-                      />
-                      <Input
-                        label="Địa danh"
-                        value={docData.dia_danh || ''}
-                        onChange={e => updateDoc({ dia_danh: e.target.value })}
-                        placeholder="VD: Hà Nội"
                       />
                     </div>
                     <div className="grid grid-cols-3 gap-3">
@@ -456,6 +438,33 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
                         placeholder="2026"
                       />
                     </div>
+
+                    <details className="group border border-slate-200 rounded-xl overflow-hidden mt-2">
+                      <summary className="p-3 bg-slate-50 text-sm font-bold text-slate-700 cursor-pointer hover:bg-slate-100 flex items-center justify-between list-none [&::-webkit-details-marker]:hidden">
+                        <span>Chi tiết cơ quan (Đã tự động điền)</span>
+                        <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
+                      </summary>
+                      <div className="p-4 space-y-3 bg-white border-t border-slate-200">
+                        <Input
+                          label="Cơ quan chủ quản"
+                          value={docData.co_quan_chu_quan || ''}
+                          onChange={e => updateDoc({ co_quan_chu_quan: e.target.value })}
+                          placeholder="VD: BỘ TÀI CHÍNH, TỈNH ỦY HÀ GIANG"
+                        />
+                        <Input
+                          label="Cơ quan ban hành"
+                          value={docData.co_quan_ban_hanh || ''}
+                          onChange={e => updateDoc({ co_quan_ban_hanh: e.target.value })}
+                          placeholder="VD: VỤ TỔ CHỨC CÁN BỘ, ĐẢNG ỦY XÃ ĐỒNG VĂN"
+                        />
+                        <Input
+                          label="Địa danh"
+                          value={docData.dia_danh || ''}
+                          onChange={e => updateDoc({ dia_danh: e.target.value })}
+                          placeholder="VD: Hà Nội"
+                        />
+                      </div>
+                    </details>
                   </div>
                 </Card>
 
@@ -598,13 +607,13 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
                           value={(() => {
                             // Lấy phần sau "TM. " / "KT. " / "TL. "
                             const qh = docData.signature?.quyen_han_ky || '';
-                            const full = qh; // VD: user sẽ nhập "TL. BỘ TRƯỞNG" hoặc "T/M HUYỆN UỶ"
+                            const full = qh; // VD: user sẽ nhập "TL. BỘ TRƯỞNG" hoặc "T/M ĐẢNG UỶ XÃ"
                             return full;
                           })()}
                           onChange={e => updateSignature({ quyen_han_ky: e.target.value })}
                           placeholder={
                             category === 'party'
-                              ? 'VD: T/M HUYỆN UỶ'
+                              ? 'VD: T/M ĐẢNG ỦY XÃ'
                               : 'VD: TL. BỘ TRƯỞNG'
                           }
                         />
@@ -618,21 +627,42 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
                         placeholder="VD: KT. VỤ TRƯỞNG VỤ TỔ CHỨC CÁN BỘ (bỏ trống nếu không cần)"
                       />
 
-                      {/* Chức vụ ký */}
-                      <Input
-                        label="Chức vụ người ký"
-                        value={docData.signature?.chuc_vu_ky || ''}
-                        onChange={e => updateSignature({ chuc_vu_ky: e.target.value })}
-                        placeholder={category === 'party' ? 'VD: BÍ THƯ' : 'VD: VỤ TRƯỞNG'}
-                      />
+                      {/* Chọn nhanh lãnh đạo */}
+                      {profile?.leaders && profile.leaders.length > 0 && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">CHỌN NGƯỜI KÝ NHANH</label>
+                          <div className="flex flex-wrap gap-2">
+                            {profile.leaders.map((ldr, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => updateSignature({ chuc_vu_ky: ldr.position, nguoi_ky: ldr.name })}
+                                className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-brand-red rounded-lg transition-all border border-slate-200 hover:border-brand-red/30 shadow-sm"
+                              >
+                                {ldr.name} - {ldr.position}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                      {/* Tên người ký */}
-                      <Input
-                        label="Họ tên người ký"
-                        value={docData.signature?.nguoi_ky || ''}
-                        onChange={e => updateSignature({ nguoi_ky: e.target.value })}
-                        placeholder="Nguyễn Văn A"
-                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Chức vụ ký */}
+                        <Input
+                          label="Chức vụ người ký"
+                          value={docData.signature?.chuc_vu_ky || ''}
+                          onChange={e => updateSignature({ chuc_vu_ky: e.target.value })}
+                          placeholder={category === 'party' ? 'VD: BÍ THƯ' : 'VD: VỤ TRƯỞNG'}
+                        />
+
+                        {/* Tên người ký */}
+                        <Input
+                          label="Họ tên người ký"
+                          value={docData.signature?.nguoi_ky || ''}
+                          onChange={e => updateSignature({ nguoi_ky: e.target.value })}
+                          placeholder="Nguyễn Văn A"
+                        />
+                      </div>
 
                       {/* Gợi ý thể thức */}
                       <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-800 space-y-1">

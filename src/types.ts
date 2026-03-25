@@ -115,7 +115,9 @@ export interface UserProfile {
   photoURL?: string;
   organization?: string;       // Cơ quan chủ quản
   department?: string;         // Đơn vị ban hành
+  location?: string;           // Địa danh (VD: Hà Nội)
   position?: string;           // Chức vụ
+  leaders?: { name: string; position: string }[]; // Danh sách lãnh đạo ký duyệt
   role?: 'user' | 'admin' | 'super-admin';
   createdAt?: any;
   updatedAt?: any;

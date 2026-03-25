@@ -5,7 +5,7 @@ import {
   FileUp, Sparkles, ChevronRight, ChevronLeft, CheckCircle2,
   FileText, AlertTriangle, ArrowRight, Loader2, ClipboardList,
   Target, Building2, Calendar, Hash, BookOpen, Zap, Database, FileEdit,
-  FileSpreadsheet, FileDown, FileType,
+  FileSpreadsheet, FileDown, FileType, UploadCloud,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Card } from '../components/Card';
@@ -37,7 +37,35 @@ export default function TrienKhai({ user, profile }: { user: any; profile: UserP
   const [selectedDocType, setSelectedDocType] = useState('');
   const [sampleDoc, setSampleDoc] = useState('');
   const [soLieu, setSoLieu] = useState('');
+  const [promptExtra, setPromptExtra] = useState('');
   const [exportFormat, setExportFormat] = useState<'docx' | 'pdf' | 'xlsx'>('docx');
+  const [uploading, setUploading] = useState<'upper' | 'sample' | 'data' | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'upper' | 'sample' | 'data') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(target);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/extract-text', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Failed to extract text');
+      const data = await res.json();
+      
+      if (target === 'upper') setInputText(data.text);
+      if (target === 'sample') setSampleDoc(data.text);
+      if (target === 'data') setSoLieu(data.text);
+    } catch (err: any) {
+      setError(err.message || 'Lỗi bóc tách file. Vui lòng paste chay.');
+    }
+    setUploading(null);
+    e.target.value = ''; // Reset input
+  };
 
   // Suggestions based on VB type
   const suggestions = useMemo(() => {
@@ -97,6 +125,7 @@ export default function TrienKhai({ user, profile }: { user: any; profile: UserP
           nguoi_ky: profile?.displayName || '',
           sampleDoc: sampleDoc || '',
           soLieu: soLieu || '',
+          promptExtra: promptExtra || '',
         }
       );
 
@@ -229,13 +258,20 @@ export default function TrienKhai({ user, profile }: { user: any; profile: UserP
                 <FileText className="w-4 h-4 text-brand-red" />
                 Nội dung VB cấp trên
               </div>
-              <span className="text-[10px] font-semibold text-text-muted bg-white px-2 py-0.5 rounded-full border">
-                {inputText.length.toLocaleString()} ký tự
-              </span>
+              <div className="flex items-center gap-3">
+                <label className="cursor-pointer text-xs font-bold text-brand-red bg-red-50 hover:bg-red-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border border-red-100">
+                  {uploading === 'upper' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                  Tải file (PDF/Word/Excel/Ảnh)
+                  <input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={e => handleFileUpload(e, 'upper')} disabled={uploading !== null} />
+                </label>
+                <span className="text-[10px] font-semibold text-text-muted bg-white px-2 py-0.5 rounded-full border">
+                  {inputText.length.toLocaleString()} ký tự
+                </span>
+              </div>
             </div>
             <textarea
               className="w-full h-[400px] p-5 text-sm leading-relaxed resize-none focus:outline-none font-serif"
-              placeholder="Paste toàn bộ nội dung VB cấp trên vào đây...&#10;&#10;Ví dụ: Nghị quyết, Chương trình hành động, Chỉ thị, Kế hoạch của Tỉnh ủy / Huyện ủy / UBND cấp trên..."
+              placeholder="Paste toàn bộ nội dung VB cấp trên vào đây...&#10;&#10;Ví dụ: Nghị quyết, Chương trình hành động, Chỉ thị, Kế hoạch của Tỉnh ủy / Đảng ủy xã / UBND cấp trên..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
             />
@@ -444,7 +480,14 @@ export default function TrienKhai({ user, profile }: { user: any; profile: UserP
                 <FileEdit className="w-4 h-4" />
                 VB mẫu tham khảo <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">Tùy chọn</span>
               </div>
-              {sampleDoc && <span className="text-[10px] font-semibold text-emerald-600 bg-white px-2 py-0.5 rounded-full border border-emerald-200">{sampleDoc.length.toLocaleString()} ký tự</span>}
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer text-[10px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 flex items-center gap-1 px-2.5 py-1 rounded transition-colors border border-emerald-200">
+                  {uploading === 'sample' ? <Loader2 className="w-3 h-3 animate-spin" /> : <UploadCloud className="w-3 h-3" />}
+                  Tải file (File/Ảnh)
+                  <input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={e => handleFileUpload(e, 'sample')} disabled={uploading !== null} />
+                </label>
+                {sampleDoc && <span className="text-[10px] font-semibold text-emerald-600 bg-white px-2 py-0.5 rounded-full border border-emerald-200">{sampleDoc.length.toLocaleString()} ký tự</span>}
+              </div>
             </div>
             <textarea
               className="w-full h-[160px] p-4 text-xs leading-relaxed resize-none focus:outline-none font-serif"
@@ -461,12 +504,33 @@ export default function TrienKhai({ user, profile }: { user: any; profile: UserP
                 <Database className="w-4 h-4" />
                 Số liệu địa phương <span className="text-[9px] font-semibold text-sky-600 bg-sky-100 px-1.5 py-0.5 rounded-full">Tùy chọn</span>
               </div>
+              <label className="cursor-pointer text-[10px] font-bold text-sky-700 bg-sky-100 hover:bg-sky-200 flex items-center gap-1 px-2.5 py-1 rounded transition-colors border border-sky-200">
+                {uploading === 'data' ? <Loader2 className="w-3 h-3 animate-spin" /> : <UploadCloud className="w-3 h-3" />}
+                Tải file (File/Ảnh)
+                <input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={e => handleFileUpload(e, 'data')} disabled={uploading !== null} />
+              </label>
             </div>
             <textarea
               className="w-full h-[120px] p-4 text-xs leading-relaxed resize-none focus:outline-none"
               placeholder="Nhập số liệu thực tế của đơn vị để AI cập nhật vào VB triển khai:&#10;&#10;Ví dụ:&#10;- Số DN hiện có: 29, HTX: 20, Hộ KD: 110&#10;- Mục tiêu 2030: tăng 25 DN, 25 HTX, 250 hộ KD&#10;- Thu ngân sách từ KTTN năm 2024: 3,5 tỷ đồng&#10;- Lao động khu vực tư nhân: 2.000 người"
               value={soLieu}
               onChange={(e) => setSoLieu(e.target.value)}
+            />
+          </Card>
+
+          {/* Yêu cầu bổ sung */}
+          <Card className="!p-0 overflow-hidden">
+            <div className="bg-amber-50 px-4 py-2.5 border-b border-amber-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-amber-800">
+                <Sparkles className="w-4 h-4" />
+                Yêu cầu bổ sung (Prompt AI) <span className="text-[9px] font-semibold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">Tùy chọn</span>
+              </div>
+            </div>
+            <textarea
+              className="w-full h-[80px] p-4 text-xs leading-relaxed resize-none focus:outline-none"
+              placeholder="Nhập thêm yêu cầu đặc biệt cho AI (VD: 'Viết ngắn gọn dưới 500 từ', 'Nhấn mạnh vào công tác chuyển đổi số', v.v.)"
+              value={promptExtra}
+              onChange={(e) => setPromptExtra(e.target.value)}
             />
           </Card>
 

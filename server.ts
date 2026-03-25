@@ -10,7 +10,12 @@ import {
   type ITableBordersOptions, type IParagraphOptions, type IRunOptions,
 } from "docx";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import dotenv from "dotenv";
+import multer from "multer";
+import * as pdfParseModule from "pdf-parse";
+const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+import mammoth from "mammoth";
+import nodemailer from "nodemailer";
+import * as xlsx from "xlsx";
 
 dotenv.config();
 
@@ -554,7 +559,7 @@ async function startServer() {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           systemInstruction: systemInstruction || "Bạn là một chuyên gia soạn thảo văn bản hành chính Việt Nam.",
@@ -700,7 +705,7 @@ QUY TẮC:
 7. Nếu có VB mẫu: theo sát cấu trúc và văn phong từ VB mẫu.
 8. Nếu có số liệu: đưa số liệu thực tế vào đúng vị trí trong VB.`;
 
-      const prompt = `Soạn ${targetLabel} triển khai ${upperDoc.loai_vb} số ${upperDoc.so_ky_hieu}.\nCác nhiệm vụ trọng tâm:\n${tasksStr}`;
+      const prompt = `Soạn ${targetLabel} triển khai ${upperDoc.loai_vb} số ${upperDoc.so_ky_hieu}.\nCác nhiệm vụ trọng tâm:\n${tasksStr}${metadata.promptExtra ? `\n\nYÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG:\n${metadata.promptExtra}` : ''}`;
 
       const response = await ai.models.generateContent({
         model: "gemini-2.0-flash",
@@ -826,6 +831,96 @@ QUY TẮC:
     } catch (error) {
       console.error("PDF Export Error:", error);
       res.status(500).json({ error: "Failed to export PDF" });
+    }
+  });
+
+  // ================================================================
+  // EXTRACT TEXT FROM UPLOADED FILES (PDF, DOCX, XLSX)
+  // ================================================================
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+
+  app.post("/api/extract-text", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      const file = req.file;
+      const ext = path.extname(file.originalname).toLowerCase();
+      let text = "";
+
+      if (ext === ".pdf") {
+        const pdfData = await pdfParse(file.buffer);
+        text = pdfData.text;
+      } else if (ext === ".docx") {
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        text = result.value;
+      } else if (ext === ".xlsx" || ext === ".xls") {
+        const workbook = xlsx.read(file.buffer, { type: "buffer" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        text = xlsx.utils.sheet_to_txt(sheet);
+      } else if (ext === ".png" || ext === ".jpg" || ext === ".jpeg") {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
+        const response = await ai.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: [
+            {
+              inlineData: {
+                data: file.buffer.toString("base64"),
+                mimeType,
+              },
+            },
+            "Vui lòng trích xuất toàn bộ văn bản (text) có trong hình ảnh này một cách chính xác nhất, giữ nguyên cấu trúc nếu có thể. Chỉ trả về văn bản được trích xuất, không thêm bình luận."
+          ]
+        });
+        text = response.text || "";
+      } else {
+        text = file.buffer.toString("utf8");
+      }
+
+      res.json({ text: text.trim().substring(0, 100000) }); // Limit to 100k chars for safety
+    } catch (error) {
+      console.error("Extract Text Error:", error);
+      res.status(500).json({ error: "Failed to extract text from file." });
+    }
+  });
+
+  // ================================================================
+  // CONTACT FORM - SEND EMAIL
+  // ================================================================
+  app.post("/api/contact", async (req, res) => {
+    const { name, email, website, message } = req.body;
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: "Vui lòng điền đủ thông tin tên, email và nội dung." });
+    }
+
+    try {
+      if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        console.log("No SMTP settings, simulating send:", req.body);
+        return res.json({ success: true, simulated: true });
+      }
+
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: process.env.SMTP_USER,
+        to: "nguyenlynktq@gmail.com",
+        subject: `[Ms Ly AI] Thư liên hệ mới từ ${name}`,
+        text: `Có một liên hệ mới từ Website Ms Ly AI:\n\nHọ và tên: ${name}\nEmail: ${email}\nWebsite (nếu có): ${website || "Không có"}\n\nNội dung:\n${message}`,
+      };
+
+      await transporter.sendMail(mailOptions);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ error: "Failed to send email." });
     }
   });
 
