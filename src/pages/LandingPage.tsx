@@ -13,7 +13,7 @@ export default function LandingPage() {
     setSubmitStatus('loading');
     
     // Tạo cấu trúc link mailto:
-    const subject = encodeURIComponent(`[AI VĂN PHÒNG] Thư liên hệ mới từ ${formData.name}`);
+    const subject = encodeURIComponent(`[Ms Ly AI] Thư liên hệ mới từ ${formData.name}`);
     const body = encodeURIComponent(`Họ và tên: ${formData.name}\nEmail: ${formData.email}\nWebsite: ${formData.website || "Không có"}\n\nNội dung:\n${formData.message}`);
     
     // Mở hòm thư mặc định của thiết bị
@@ -34,10 +34,10 @@ export default function LandingPage() {
           {/* Logo */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-16 h-16 bg-[#b91c1c] rounded-full flex flex-col items-center justify-center shadow-lg border-[3px] border-white ring-1 ring-red-900/10">
-              <span className="text-yellow-400 font-serif font-black text-[24px] leading-none mb-0.5 tracking-tight">AI</span>
-              <span className="text-yellow-400 font-bold text-[9px] leading-none text-center tracking-widest">VĂN PHÒNG</span>
+              <span className="text-yellow-400 font-serif font-black text-[24px] leading-none mb-0.5 tracking-tight">Ms Ly</span>
+              <span className="text-yellow-400 font-bold text-[10px] leading-none text-center tracking-widest">AI</span>
             </div>
-            <div className="hidden sm:block font-bold text-xl text-[#0a2540]">AI VĂN PHÒNG</div>
+            <div className="hidden sm:block font-bold text-xl text-[#0a2540]">Ms Ly AI</div>
           </div>
           
           {/* Menu */}
@@ -70,7 +70,7 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-6xl md:text-8xl font-black tracking-tighter mb-8 bg-gradient-to-r from-[#d32f2f] to-[#f57c00] bg-clip-text text-transparent">
-            AI VĂN PHÒNG
+            MS LY AI
           </motion.h1>
 
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed font-medium">
@@ -94,13 +94,13 @@ export default function LandingPage() {
       {/* Partnership Policy */}
       <section className="py-20 px-6 bg-gray-50/50 border-y border-gray-100" id="chinh-sach">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-black text-center mb-10 text-[#0a2540] leading-tight uppercase">AI VĂN PHÒNG CÔNG BỐ CHÍNH SÁCH ĐỐI TÁC:<br/><span className="text-[#d32f2f]">THU NHẬP ĐỘT PHÁ ĐẾN 30% DOANH THU</span></h2>
+          <h2 className="text-3xl font-black text-center mb-10 text-[#0a2540] leading-tight uppercase">Ms Ly AI CÔNG BỐ CHÍNH SÁCH ĐỐI TÁC:<br/><span className="text-[#d32f2f]">THU NHẬP ĐỘT PHÁ ĐẾN 30% DOANH THU</span></h2>
           <div className="prose prose-blue max-w-none text-gray-700 leading-relaxed space-y-6">
             <p className="font-bold text-lg text-[#0a2540]">Bạn đang tìm kiếm một cơ hội gia tăng thu nhập bền vững trong kỷ nguyên AI? Bạn mong muốn cộng tác cùng một hệ thống minh bạch, hiện đại và không rào cản?</p>
             <p>Với triết lý "Hợp tác cùng phát triển", chúng tôi không chỉ mang đến giải pháp công nghệ vượt trội mà còn xây dựng một hệ sinh thái thu nhập hấp dẫn nhất thị trường hiện nay.</p>
             
             <h3 className="text-xl font-bold font-serif text-[#0a2540] mt-10">1. KHÔNG RÀO CẢN: Mọi thành viên đều là Đối tác</h3>
-            <p>Khác với các chương trình truyền thống yêu cầu ký kết phức tạp, tại <strong>AI VĂN PHÒNG</strong>, chúng tôi tin rằng mỗi người dùng đều có thể trở thành một đại sứ thương hiệu.</p>
+            <p>Khác với các chương trình truyền thống yêu cầu ký kết phức tạp, tại <strong>Ms Ly AI</strong>, chúng tôi tin rằng mỗi người dùng đều có thể trở thành một đại sứ thương hiệu.</p>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Cấp độ mặc định:</strong> Ngay khi đăng ký tài khoản, bạn nghiễm nhiên trở thành Đối tác Cấp 1.</li>
               <li><strong>Hoa hồng khởi điểm:</strong> Nhận ngay <strong>10%</strong> doanh thu trên mỗi đơn hàng thành công.</li>
@@ -133,7 +133,7 @@ export default function LandingPage() {
             <p>Chúng tôi hiểu rằng niềm tin đến từ sự sòng phẳng. Hệ thống thiết lập quy trình rút tiền đơn giản, bảo mật và đúng quy định pháp luật:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Ngưỡng rút tiền:</strong> Chỉ từ <strong>1.000.000 VNĐ</strong> số dư hoa hồng.</li>
-              <li><strong>Nghĩa vụ Thuế:</strong> AI VĂN PHÒNG thay mặt bạn khấu trừ 10% Thuế TNCN nộp Ngân sách Nhà nước.</li>
+              <li><strong>Nghĩa vụ Thuế:</strong> MS LY AI thay mặt bạn khấu trừ 10% Thuế TNCN nộp Ngân sách Nhà nước.</li>
               <li><strong>Tốc độ xử lý:</strong> Tiền về tài khoản trong vòng <strong>07 ngày làm việc</strong>.</li>
             </ul>
           </div>
@@ -227,7 +227,7 @@ export default function LandingPage() {
                 <Check className="w-6 h-6 text-green-600" />
               </div>
               <h3 className="font-bold text-lg mb-1">Gửi thông tin thành công!</h3>
-              <p className="text-sm opacity-80">Cảm ơn bạn đã liên hệ, AI VĂN PHÒNG sẽ sớm liên lạc lại với bạn.</p>
+              <p className="text-sm opacity-80">Cảm ơn bạn đã liên hệ, Ms Ly AI sẽ sớm liên lạc lại với bạn.</p>
               <button onClick={() => setSubmitStatus('idle')} className="mt-4 text-green-700 text-sm font-semibold underline">Gửi phản hồi khác</button>
             </div>
           ) : (
@@ -290,7 +290,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-[#0a2540] py-8 border-t border-gray-800 text-white/50 text-center text-sm">
-        <p>&copy; 2026 AI VĂN PHÒNG. Trợ lý thông minh dành cho khối hành chính.</p>
+        <p>&copy; 2026 Ms Ly AI. Trợ lý thông minh dành cho khối hành chính.</p>
       </footer>
     </div>
   );

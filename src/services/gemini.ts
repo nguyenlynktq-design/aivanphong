@@ -235,112 +235,6 @@ QUY TẮC BẮT BUỘC:
   return data.text;
 }
 
-export async function generateDocContentStream(
-  prompt: string, 
-  type: string, 
-  metadata: any, 
-  onChunk: (text: string) => void
-) {
-  const isParty = metadata.category === 'party';
-  const docMeta = getDocTypeMeta(type, metadata.category);
-  const structureHint = STRUCTURE_TEMPLATES[type] || '';
-
-  const systemInstruction = `Bạn là một chuyên gia soạn thảo văn bản hành chính Việt Nam cấp cao.
-
-HỆ THỐNG: ${isParty ? 'Văn bản Đảng Cộng sản Việt Nam (Hướng dẫn 36-HD/VPTW)' : 'Văn bản hành chính nhà nước (Nghị định 30/2020/NĐ-CP)'}.
-LOẠI VĂN BẢN: "${docMeta?.label || type}".
-NHÓM: ${metadata.docGroup === 'cong_van' ? 'Công văn (không có tên loại, có Kính gửi)' : metadata.docGroup === 'bien_ban' ? 'Biên bản (có Thư ký + Chủ trì)' : 'VB có tên loại'}.
-
-THÔNG TIN HÀNH CHÍNH:
-- Cơ quan chủ quản: ${metadata.co_quan_chu_quan || '(chưa điền)'}
-- Cơ quan ban hành: ${metadata.co_quan_ban_hanh || '(chưa điền)'}
-- Số ký hiệu: ${metadata.so_ky_hieu || '(chưa điền)'}
-- Địa danh: ${metadata.dia_danh || '(chưa điền)'}
-- Ngày ${metadata.ngay || '...'} tháng ${metadata.thang || '...'} năm ${metadata.nam || '...'}
-- Người ký: ${metadata.nguoi_ky || '(chưa điền)'}
-- Chức vụ: ${metadata.chuc_vu_ky || '(chưa điền)'}
-- Quyền hạn: ${metadata.quyen_han_ky || 'Ký trực tiếp'}
-
-${structureHint ? `MẪU CẤU TRÚC CHO LOẠI "${docMeta?.label}":\n${structureHint}` : ''}
-
-QUY TẮC BẮT BUỘC:
-1. CHỈ trả về PHẦN NỘI DUNG CHÍNH — KHÔNG bao gồm: header, quốc hiệu, tiêu ngữ, số ký hiệu, tên loại VB, trích yếu, chữ ký, nơi nhận.
-2. Văn phong: trang trọng, chính xác, súc tích, chuẩn mực hành chính nhà nước Việt Nam.
-3. ${isParty ? 'VB ĐẢNG: khoản trong Điều đánh số 1., 2., 3. (TUYỆT ĐỐI KHÔNG dùng a, b, c hay a), b), c)).' : 'VB NĐ30: khoản đánh số 1., 2., 3. hoặc a), b), c).'}
-4. ${isParty ? 'Mục dùng: 1.1., 1.2., 2.1. (KHÔNG dùng dấu chấm phẩy).' : 'Điểm trong khoản dùng a), b), c).'}
-5. Kết thúc VĂN BẢN bằng dấu ./. (chấm gạch chéo chấm), KHÔNG phải dấu chấm đơn.
-6. Trả về PLAIN TEXT thuần — KHÔNG dùng markdown (**, ##, -, *, v.v.).
-7. Sử dụng đúng thuật ngữ pháp lý và hành chính.
-8. Nếu có căn cứ, mỗi căn cứ bắt đầu bằng "Căn cứ" và kết thúc bằng dấu chấm phẩy (;), căn cứ cuối kết thúc bằng dấu phẩy (,).`;
-
-  const response = await fetch("/api/ai/generate-stream", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, systemInstruction }),
-  });
-
-  if (!response.ok) throw new Error("Failed to start stream");
-  if (!response.body) throw new Error("No response body");
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let done = false;
-  let buffer = '';
-
-  while (!done) {
-    const { value, done: doneReading } = await reader.read();
-    done = doneReading;
-    if (value) {
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Giữ lại dòng cuối (chưa hoàn chỉnh) trong buffer
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:') || trimmed === 'data: [DONE]') continue;
-
-        try {
-          // slice off 'data:' then trim
-          const jsonStr = trimmed.slice(5).trim();
-          if (!jsonStr) continue;
-
-          const data = JSON.parse(jsonStr);
-          if (data.error) throw new Error(data.error);
-          if (data.text) {
-            onChunk(data.text);
-          }
-        } catch (e: any) {
-          if (e.message && !e.message.includes('JSON')) {
-            throw e;
-          }
-          console.error("Error parsing stream chunk", e, line);
-        }
-      }
-    }
-  }
-
-  // Handle any remaining data in the buffer
-  if (buffer) {
-    const lines = buffer.split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:') || trimmed === 'data: [DONE]') continue;
-
-      try {
-        const jsonStr = trimmed.slice(5).trim();
-        if (!jsonStr) continue;
-
-        const data = JSON.parse(jsonStr);
-        if (data.error) throw new Error(data.error);
-        if (data.text) {
-          onChunk(data.text);
-        }
-      } catch (e) {
-        console.error("Error parsing final buffer", e, line);
-      }
-    }
-  }
-}
-
 // ============================================================
 // AI Optimize — tối ưu văn phong theo NĐ30/HD36
 // ============================================================
@@ -448,7 +342,14 @@ export async function analyzeUpperDocument(text: string): Promise<any> {
     body: JSON.stringify({ text }),
   });
 
-  if (!response.ok) throw new Error("Failed to analyze document");
+  if (!response.ok) {
+    try {
+      const errRes = await response.json();
+      if (errRes.error) throw new Error(errRes.error);
+    } catch (e) {
+      throw new Error("Failed to analyze document");
+    }
+  }
   const data = await response.json();
   return data;
 }
@@ -467,7 +368,14 @@ export async function generateDerivativeDoc(
     body: JSON.stringify({ upperDoc, targetType, targetLabel, selectedTasks, metadata }),
   });
 
-  if (!response.ok) throw new Error("Failed to generate derivative document");
+  if (!response.ok) {
+    try {
+      const errRes = await response.json();
+      if (errRes.error) throw new Error(errRes.error);
+    } catch (e) {
+      throw new Error("Failed to generate derivative document");
+    }
+  }
   const data = await response.json();
   return data.text;
 }

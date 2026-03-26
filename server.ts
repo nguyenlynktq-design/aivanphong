@@ -11,8 +11,7 @@ import {
 } from "docx";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import multer from "multer";
-import * as pdfParseModule from "pdf-parse";
-const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import mammoth from "mammoth";
 import nodemailer from "nodemailer";
 import * as xlsx from "xlsx";
@@ -548,54 +547,6 @@ const PORT = 3000;
 async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-  const uploadExtract = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-  // File Extraction API (PDF, DOCX, XLSX, Images)
-  app.post("/api/extract-text", uploadExtract.single("file"), async (req, res) => {
-    try {
-      const file = req.file;
-      if (!file) {
-        return res.status(400).json({ error: "No file provided" });
-      }
-
-      const ext = path.extname(file.originalname).toLowerCase();
-      let text = "";
-
-      if (ext === ".pdf") {
-        const data = await pdfParse(file.buffer);
-        text = data.text;
-      } else if (ext === ".doc" || ext === ".docx") {
-        const result = await mammoth.extractRawText({ buffer: file.buffer });
-        text = result.value;
-      } else if (ext === ".xls" || ext === ".xlsx") {
-        const workbook = xlsx.read(file.buffer, { type: "buffer" });
-        const firstSheet = workbook.SheetNames[0];
-        text = xlsx.utils.sheet_to_csv(workbook.Sheets[firstSheet]);
-      } else if (ext === ".png" || ext === ".jpg" || ext === ".jpeg") {
-        if (!process.env.GEMINI_API_KEY) {
-          throw new Error("GEMINI_API_KEY required for image OCR");
-        }
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
-          contents: [
-            { inlineData: { mimeType: file.mimetype, data: file.buffer.toString("base64") } },
-            "Extract all text from this image exactly as it appears. Do not add any extra formatting or markdown, just return the plain text."
-          ]
-        });
-        text = response.text || "";
-      } else {
-        text = file.buffer.toString("utf-8");
-      }
-
-      res.json({ text });
-    } catch (error) {
-      console.error("Extraction error:", error);
-      res.status(500).json({ error: "Failed to extract text from file" });
-    }
-  });
 
   // AI Generation API
   app.post("/api/ai/generate", async (req, res) => {
@@ -619,44 +570,6 @@ async function startServer() {
     } catch (error) {
       console.error("AI Generation Error:", error);
       res.status(500).json({ error: "Failed to generate content" });
-    }
-  });
-
-  // AI Generation Stream API
-  app.post("/api/ai/generate-stream", async (req, res) => {
-    const { prompt, systemInstruction } = req.body;
-
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
-    }
-
-    // Set headers for SSE
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const responseStream = await ai.models.generateContentStream({
-        model: "gemini-2.0-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: systemInstruction || "Bạn là một chuyên gia soạn thảo văn bản hành chính Việt Nam.",
-        },
-      });
-
-      for await (const chunk of responseStream) {
-        if (chunk.text) {
-          // Send to client as SSE
-          res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
-        }
-      }
-      res.write("data: [DONE]\n\n");
-      res.end();
-    } catch (error) {
-      console.error("AI Generation Stream Error:", error);
-      res.write(`data: ${JSON.stringify({ error: "Failed to generate stream" })}\n\n`);
-      res.end();
     }
   });
 
@@ -834,7 +747,7 @@ QUY TẮC:
 
     try {
       const pdfDoc = await PDFDocument.create();
-      let page = pdfDoc.addPage([595.28, 841.89]); // A4
+      const page = pdfDoc.addPage([595.28, 841.89]); // A4
       const { width, height } = page.getSize();
 
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -882,23 +795,14 @@ QUY TẮC:
       const content = data.noi_dung || data.content || "";
       const lines = content.split("\n");
       let yOffset = height - 195;
-
-      const checkPageBreak = () => {
-        if (yOffset < 100) {
-          page = pdfDoc.addPage([595.28, 841.89]);
-          yOffset = height - 100;
-        }
-      };
-
       for (const line of lines) {
-        checkPageBreak();
+        if (yOffset < 100) break;
         const words = line.split(" ");
         let currentLine = "";
         for (const word of words) {
           const testLine = currentLine + word + " ";
           const testWidth = font.widthOfTextAtSize(testLine, 11);
           if (testWidth > width - 142) {
-            checkPageBreak();
             page.drawText(currentLine, { x: 85, y: yOffset, size: 11, font });
             yOffset -= 16;
             currentLine = word + " ";
@@ -906,7 +810,6 @@ QUY TẮC:
             currentLine = testLine;
           }
         }
-        checkPageBreak();
         page.drawText(currentLine, { x: 85, y: yOffset, size: 11, font });
         yOffset -= 20;
       }
