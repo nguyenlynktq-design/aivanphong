@@ -163,6 +163,11 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
         currentContent += chunk;
         updateDoc({ noi_dung: currentContent });
       });
+
+      if (!currentContent.trim()) {
+        alert("AI không tạo được nội dung. Vui lòng kiểm tra lại câu lệnh hoặc thử lại.");
+        setStep(1);
+      }
     } catch (error: any) {
       console.error('AI Generation failed', error);
       alert('Tạo văn bản thất bại. Xin vui lòng thử lại.\nChi tiết: ' + error.message);

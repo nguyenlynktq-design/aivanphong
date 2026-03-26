@@ -285,24 +285,57 @@ QUY TẮC BẮT BUỘC:
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let done = false;
+  let buffer = '';
 
   while (!done) {
     const { value, done: doneReading } = await reader.read();
     done = doneReading;
     if (value) {
-      const chunkValue = decoder.decode(value, { stream: true });
-      const lines = chunkValue.split('\n');
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // Giữ lại dòng cuối (chưa hoàn chỉnh) trong buffer
       for (const line of lines) {
-        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.text) {
-              onChunk(data.text);
-            }
-          } catch (e) {
-            console.error("Error parsing stream chunk", e, line);
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:') || trimmed === 'data: [DONE]') continue;
+
+        try {
+          // slice off 'data:' then trim
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr) continue;
+
+          const data = JSON.parse(jsonStr);
+          if (data.error) throw new Error(data.error);
+          if (data.text) {
+            onChunk(data.text);
           }
+        } catch (e: any) {
+          if (e.message && !e.message.includes('JSON')) {
+            throw e;
+          }
+          console.error("Error parsing stream chunk", e, line);
         }
+      }
+    }
+  }
+
+  // Handle any remaining data in the buffer
+  if (buffer) {
+    const lines = buffer.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:') || trimmed === 'data: [DONE]') continue;
+
+      try {
+        const jsonStr = trimmed.slice(5).trim();
+        if (!jsonStr) continue;
+
+        const data = JSON.parse(jsonStr);
+        if (data.error) throw new Error(data.error);
+        if (data.text) {
+          onChunk(data.text);
+        }
+      } catch (e) {
+        console.error("Error parsing final buffer", e, line);
       }
     }
   }
