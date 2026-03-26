@@ -574,6 +574,44 @@ async function startServer() {
     }
   });
 
+  // AI Generation Stream API
+  app.post("/api/ai/generate-stream", async (req, res) => {
+    const { prompt, systemInstruction } = req.body;
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+    }
+
+    // Set headers for SSE
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const responseStream = await ai.models.generateContentStream({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: systemInstruction || "Bạn là một chuyên gia soạn thảo văn bản hành chính Việt Nam.",
+        },
+      });
+
+      for await (const chunk of responseStream) {
+        if (chunk.text) {
+          // Send to client as SSE
+          res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+        }
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (error) {
+      console.error("AI Generation Stream Error:", error);
+      res.write(`data: ${JSON.stringify({ error: "Failed to generate stream" })}\n\n`);
+      res.end();
+    }
+  });
+
   // ================================================================
   // ANALYZE UPPER DOCUMENT — Phân tích VB cấp trên
   // ================================================================
@@ -748,7 +786,7 @@ QUY TẮC:
 
     try {
       const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([595.28, 841.89]); // A4
+      let page = pdfDoc.addPage([595.28, 841.89]); // A4
       const { width, height } = page.getSize();
 
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -796,14 +834,23 @@ QUY TẮC:
       const content = data.noi_dung || data.content || "";
       const lines = content.split("\n");
       let yOffset = height - 195;
+
+      const checkPageBreak = () => {
+        if (yOffset < 100) {
+          page = pdfDoc.addPage([595.28, 841.89]);
+          yOffset = height - 100;
+        }
+      };
+
       for (const line of lines) {
-        if (yOffset < 100) break;
+        checkPageBreak();
         const words = line.split(" ");
         let currentLine = "";
         for (const word of words) {
           const testLine = currentLine + word + " ";
           const testWidth = font.widthOfTextAtSize(testLine, 11);
           if (testWidth > width - 142) {
+            checkPageBreak();
             page.drawText(currentLine, { x: 85, y: yOffset, size: 11, font });
             yOffset -= 16;
             currentLine = word + " ";
@@ -811,6 +858,7 @@ QUY TẮC:
             currentLine = testLine;
           }
         }
+        checkPageBreak();
         page.drawText(currentLine, { x: 85, y: yOffset, size: 11, font });
         yOffset -= 20;
       }

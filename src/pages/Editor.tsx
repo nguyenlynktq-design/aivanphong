@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Document, DocType, DocCategory, DocGroup, UserProfile } from '../types';
-import { generateDocContent, optimizeContent, exportDocument, getSigningOptions, suggestCanCu } from '../services/gemini';
+import { generateDocContent, generateDocContentStream, optimizeContent, exportDocument, getSigningOptions, suggestCanCu } from '../services/gemini';
 import { getGroupedDocTypes, findDocType, suggestSoKyHieu, getDocLabel, DOC_GROUPS } from '../config/docTypes';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -120,7 +120,7 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
     if (!user) return;
     setSaving(true);
     try {
-      const docId = id || Math.random().toString(36).substring(7);
+      const docId = docData.id || id || Math.random().toString(36).substring(7);
       const docRef = doc(db, 'documents', docId);
       const payload = {
         ...docData,
@@ -130,9 +130,12 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
       };
       await setDoc(docRef, payload);
       setLastSaved(new Date());
-      if (!id) navigate(`/editor/${docId}`);
+      if (!docData.id) {
+        setDocData(prev => ({ ...prev, id: docId }));
+        window.history.replaceState(null, '', `/editor/${docId}`);
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `documents/${id || 'new'}`);
+      handleFirestoreError(error, OperationType.WRITE, `documents/${docData.id || id || 'new'}`);
     }
     setSaving(false);
   };
@@ -140,8 +143,12 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
   const handleAiGenerate = async () => {
     if (!prompt) return;
     setAiLoading(true);
+    setStep(2); // Chuyển sang bước 2 để thấy text stream
+    updateDoc({ noi_dung: '' });
+    let currentContent = '';
+
     try {
-      const content = await generateDocContent(prompt, docData.type || 'thong_bao', {
+      await generateDocContentStream(prompt, docData.type || 'thong_bao', {
         category,
         docGroup: docData.docGroup,
         co_quan_chu_quan: docData.co_quan_chu_quan,
@@ -152,11 +159,14 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
         nguoi_ky: docData.signature?.nguoi_ky,
         chuc_vu_ky: docData.signature?.chuc_vu_ky,
         quyen_han_ky: docData.signature?.quyen_han_ky,
+      }, (chunk) => {
+        currentContent += chunk;
+        updateDoc({ noi_dung: currentContent });
       });
-      updateDoc({ noi_dung: content });
-      setStep(2);
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI Generation failed', error);
+      alert('Tạo văn bản thất bại. Xin vui lòng thử lại.\nChi tiết: ' + error.message);
+      setStep(1);
     }
     setAiLoading(false);
   };
@@ -167,8 +177,9 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
     try {
       const optimized = await optimizeContent(docData.noi_dung, category);
       updateDoc({ noi_dung: optimized });
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI Optimization failed', error);
+      alert('Tối ưu văn phong thất bại. Xin vui lòng thử lại.\nChi tiết: ' + error.message);
     }
     setAiLoading(false);
   };
@@ -180,8 +191,9 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
       const suggestStr = await suggestCanCu(docData.type || 'thong_bao', docData.trich_yeu, cat);
       const newCanCu = suggestStr.split('\n').map((x: string) => x.trim()).filter((x: string) => x.startsWith('Căn cứ') || x.length > 10);
       updateDoc({ can_cu: [...(docData.can_cu || []), ...newCanCu] });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Suggest căn cứ failed', error);
+      alert('Gợi ý căn cứ thất bại.\nChi tiết: ' + error.message);
     }
     setAiLoading(false);
   };
@@ -628,26 +640,31 @@ export default function Editor({ user, profile }: { user: any; profile: UserProf
                       {/* Quyền hạn ký */}
                       <Select
                         label="Quyền hạn ký"
-                        value={docData.signature?.quyen_han_ky || ''}
-                        onChange={e => updateSignature({ quyen_han_ky: e.target.value })}
+                        value={signingOptions.find(opt => opt.value && docData.signature?.quyen_han_ky?.startsWith(opt.value))?.value || ''}
+                        onChange={e => {
+                          const newPrefix = e.target.value;
+                          const oldPrefix = signingOptions.find(opt => opt.value && docData.signature?.quyen_han_ky?.startsWith(opt.value))?.value || '';
+                          const suffix = docData.signature?.quyen_han_ky?.substring(oldPrefix.length).trim() || '';
+                          updateSignature({ quyen_han_ky: newPrefix ? `${newPrefix} ${suffix}`.trim() : suffix });
+                        }}
                         options={signingOptions}
                       />
 
                       {/* Chức vụ người đứng đầu (khi có quyền hạn TM./KT./TL.) */}
-                      {docData.signature?.quyen_han_ky && (
+                      {signingOptions.find(opt => opt.value && docData.signature?.quyen_han_ky?.startsWith(opt.value))?.value && (
                         <Input
-                          label={`Chức vụ sau "${docData.signature.quyen_han_ky}"`}
-                          value={(() => {
-                            // Lấy phần sau "TM. " / "KT. " / "TL. "
-                            const qh = docData.signature?.quyen_han_ky || '';
-                            const full = qh; // VD: user sẽ nhập "TL. BỘ TRƯỞNG" hoặc "T/M ĐẢNG UỶ XÃ"
-                            return full;
-                          })()}
-                          onChange={e => updateSignature({ quyen_han_ky: e.target.value })}
+                          label="Chức vụ người đứng đầu (sau dòng quyền hạn)"
+                          value={docData.signature?.quyen_han_ky?.substring(
+                            signingOptions.find(opt => opt.value && docData.signature?.quyen_han_ky?.startsWith(opt.value))?.value.length || 0
+                          ).trim() || ''}
+                          onChange={e => {
+                            const prefix = signingOptions.find(opt => opt.value && docData.signature?.quyen_han_ky?.startsWith(opt.value))?.value || '';
+                            updateSignature({ quyen_han_ky: prefix ? `${prefix} ${e.target.value}` : e.target.value });
+                          }}
                           placeholder={
                             category === 'party'
-                              ? 'VD: T/M ĐẢNG ỦY XÃ'
-                              : 'VD: TL. BỘ TRƯỞNG'
+                              ? 'VD: ĐẢNG ỦY XÃ'
+                              : 'VD: BỘ TRƯỞNG'
                           }
                         />
                       )}
