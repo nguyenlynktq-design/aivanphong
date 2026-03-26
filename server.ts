@@ -548,6 +548,54 @@ const PORT = 3000;
 async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+  const uploadExtract = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+  // File Extraction API (PDF, DOCX, XLSX, Images)
+  app.post("/api/extract-text", uploadExtract.single("file"), async (req, res) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No file provided" });
+      }
+
+      const ext = path.extname(file.originalname).toLowerCase();
+      let text = "";
+
+      if (ext === ".pdf") {
+        const data = await pdfParse(file.buffer);
+        text = data.text;
+      } else if (ext === ".doc" || ext === ".docx") {
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        text = result.value;
+      } else if (ext === ".xls" || ext === ".xlsx") {
+        const workbook = xlsx.read(file.buffer, { type: "buffer" });
+        const firstSheet = workbook.SheetNames[0];
+        text = xlsx.utils.sheet_to_csv(workbook.Sheets[firstSheet]);
+      } else if (ext === ".png" || ext === ".jpg" || ext === ".jpeg") {
+        if (!process.env.GEMINI_API_KEY) {
+          throw new Error("GEMINI_API_KEY required for image OCR");
+        }
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: [
+            { inlineData: { mimeType: file.mimetype, data: file.buffer.toString("base64") } },
+            "Extract all text from this image exactly as it appears. Do not add any extra formatting or markdown, just return the plain text."
+          ]
+        });
+        text = response.text || "";
+      } else {
+        text = file.buffer.toString("utf-8");
+      }
+
+      res.json({ text });
+    } catch (error) {
+      console.error("Extraction error:", error);
+      res.status(500).json({ error: "Failed to extract text from file" });
+    }
+  });
 
   // AI Generation API
   app.post("/api/ai/generate", async (req, res) => {
